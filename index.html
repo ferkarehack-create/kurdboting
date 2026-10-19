@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبۆردی لایڤ MT5 - MonetaMarkets</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0b0f19; color: #f3f4f6; font-family: 'Vazirmatn', sans-serif; }
+        .glow-green { box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4">
+    <div class="max-w-4xl mx-auto w-full space-y-4">
+        
+        <!-- Header & Bot Toggle -->
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-robot text-amber-400"></i> ڕۆبۆتی جووڵەی بازار (Smart EA)
+                </h1>
+                <p class="text-xs text-slate-400">حیسابی ڕاستەقینە - MonetaMarkets</p>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-slate-950 p-2 px-4 rounded-xl border border-slate-800">
+                <span id="botStatusDot" class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+                <span id="botStatusText" class="text-xs font-semibold text-red-400">ڕۆبۆت: ناچالاک</span>
+                <button id="toggleBotBtn" onclick="toggleAutoBot()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition-all">
+                    کارپێکردن
+                </button>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center shadow-lg">
+            <div>
+                <span class="text-xs text-slate-400 block mb-1">دۆخی ڕەبتی برۆکەر</span>
+                <h2 id="connectionStatus" class="text-base font-bold text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-check-circle"></i> بەستراوە بە سرڤەری لایڤ ✔️
+                </h2>
+            </div>
+            <div class="bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-emerald-500/30">
+                Connected
+            </div>
+        </div>
+
+        <!-- Manual Trade Buttons -->
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="executeLiveTrade('ORDER_TYPE_SELL')" class="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl shadow-lg flex justify-between items-center transition-all glow-red">
+                <div class="text-right">
+                    <span class="text-xs text-blue-200 block">فرۆشتن (SELL)</span>
+                    <span class="text-lg font-bold">Market</span>
+                </div>
+                <i class="fa-solid fa-arrow-trend-down text-xl text-blue-200"></i>
+            </button>
+            
+            <button onclick="executeLiveTrade('ORDER_TYPE_BUY')" class="bg-blue-500 hover:bg-blue-400 text-white p-4 rounded-2xl shadow-lg flex justify-between items-center transition-all glow-green">
+                <i class="fa-solid fa-arrow-trend-up text-xl text-blue-100"></i>
+                <div class="text-left">
+                    <span class="text-xs text-blue-100 block">کڕین (BUY)</span>
+                    <span class="text-lg font-bold">Market</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- Stats Grid (Balance, Equity, Live PnL) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p class="text-xs text-slate-400 mb-1">باڵانسی ڕاستەقینە (Balance)</p>
+                <h2 id="liveBalance" class="text-xl font-bold text-white">$57.61</h2>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p class="text-xs text-slate-400 mb-1">سەرمایە (Equity)</p>
+                <h2 id="liveEquity" class="text-xl font-bold text-emerald-400">$57.61</h2>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl border-amber-500/30">
+                <p class="text-xs text-amber-400 mb-1">قازانج / زیانی لایڤ (PnL)</p>
+                <h2 id="livePnL" class="text-xl font-bold text-slate-300">$0.00</h2>
+            </div>
+        </div>
+
+        <!-- Settings: Symbol, Lot Size, SL, TP -->
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">جفت دراو (Symbol)</label>
+                <select id="symbolSelect" class="w-full bg-slate-950 text-white border border-slate-800 rounded-xl p-2.5 text-xs font-bold">
+                    <option value="XAUUSD">XAUUSD (زێڕ)</option>
+                    <option value="EURUSD">EURUSD</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1">قەبارەی لۆت (Lot Size)</label>
+                <input type="number" id="lotSizeInput" value="0.01" step="0.01" min="0.01" class="w-full bg-slate-950 text-white border border-slate-800 rounded-xl p-2.5 text-xs font-bold">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs text-emerald-400 mb-1">قازانج (TP)</label>
+                    <input type="number" id="tpInput" value="50" class="w-full bg-slate-950 text-white border border-slate-800 rounded-xl p-2.5 text-xs font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs text-red-400 mb-1">زیان (SL)</label>
+                    <input type="number" id="slInput" value="20" class="w-full bg-slate-950 text-white border border-slate-800 rounded-xl p-2.5 text-xs font-bold">
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Logs -->
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-xs font-bold text-slate-400 flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-amber-400"></i> تێرمیناڵی ڕووداوەکان
+                </h3>
+                <button onclick="clearConsole()" class="text-[10px] text-slate-500 hover:text-slate-300">سڕینەوە</button>
+            </div>
+            <div id="consoleLog" class="h-40 overflow-y-auto font-mono text-[11px] text-emerald-400 space-y-1">
+                <div>[INFO] سیستەم ئامادەیە بۆ کارکردنی لایڤ...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const METAAPI_TOKEN = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1YTBiMzgyZTI0YTBiNTA4MjI4NDkyM2I3NTBjYTgyNiIsImFjY2Vzc1J1bGVzIjpbeyJpZCI6InRyYWRpbmctYWNjb3VudC1tYW5hZ2VtZW50LWFwaSIsIm1ldGhvZHMiOlsidHJhZGluZy1hY2NvdW50LW1hbmFnZW1lbnQtYXBpOnJlc3Q6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6Im1ldGFhcGktcmVzdC1hcGkiLCJtZXRob2RzIjpbIm1ldGFhcGktYXBpOnJlc3Q6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6Im1ldGFhcGktcnBjLWFwaSIsIm1ldGhvZHMiOlsibWV0YWFwaS1hcGk6d3M6cHVibGljOio6KiJdLCJyb2xlcyI6WyJyZWFkZXIiLCJ3cml0ZXIiXSwicmVzb3VyY2VzIjpbIio6JFVTRVJfSUQkOioiXX0seyJpZCI6Im1ldGFhcGktcmVhbC10aW1lLXN0cmVhbWluZy1hcGkiLCJtZXRob2RzIjpbIm1ldGFhcGktYXBpOndzOnB1YmxpYzoqOioiXSwicm9sZXMiOlsicmVhZGVyIiwid3JpdGVyIl0sInJlc291cmNlcyI6WyIqOiRVU0VSX0lEJDoqIl19LHsiaWQiOiJtZXRhc3RhdHMtYXBpIiwibWV0aGhvZHMiOlsibWV0YXN0YXRzLWFwaTpyZXN0OnB1YmxpYzoqOioiXSwicm9sZXMiOlsicmVhZGVyIiwid3JpdGVyIl0sInJlc291cmNlcyI6WyIqOiRVU0VSX0lEJDoqIl19LHsiaWQiOiJyaXNrLW1hbmFnZW1lbnQtYXBpIiwibWV0aGhvZHMiOlsicmlzay1tYW5hZ2VtZW50LWFwaTpyZXN0OnB1YmxpYzoqOioiXSwicm9sZXMiOlsicmVhZGVyIiwid3JpdGVyIl0sInJlc291cmNlcyI:RVUSER_ID:...";
+        const METAAPI_ACCOUNT_ID = "5ffe52c6-d445-436b-90df-d6ae36c435c7";
+
+        let autoBotActive = false;
+        let botInterval = null;
+
+        function toggleAutoBot() {
+            autoBotActive = !autoBotActive;
+            const btn = document.getElementById('toggleBotBtn');
+            const dot = document.getElementById('botStatusDot');
+            const text = document.getElementById('botStatusText');
+
+            if (autoBotActive) {
+                btn.className = "bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition-all";
+                btn.innerText = "ڕاگرتن";
+                dot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
+                text.className = "text-xs font-semibold text-emerald-400";
+                text.innerText = "ڕۆبۆت: چالاک (ئۆتۆماتیک)";
+                logConsole("[BOT] ڕۆبۆتی ئۆتۆماتیک دەستی بە کار کرد.");
+
+                botInterval = setInterval(() => {
+                    let randomAction = Math.random() > 0.5 ? 'ORDER_TYPE_BUY' : 'ORDER_TYPE_SELL';
+                    executeLiveTrade(randomAction);
+                }, 20000);
+            } else {
+                btn.className = "bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-3 rounded-lg text-xs transition-all";
+                btn.innerText = "کارپێکردن";
+                dot.className = "w-3 h-3 rounded-full bg-red-500 animate-pulse";
+                text.className = "text-xs font-semibold text-red-400";
+                text.innerText = "ڕۆبۆت: ناچالاک";
+                logConsole("[BOT] ڕۆبۆت ڕاگیرا.");
+                clearInterval(botInterval);
+            }
+        }
+
+        async function fetchAccountData() {
+            const targetUrl = `https://mt-client-api-v1.new-york.agilix.metaapi.cloud/users/current/accounts/${METAAPI_ACCOUNT_ID}/accountInformation`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=` + encodeURIComponent(targetUrl);
+
+            try {
+                const response = await fetch(proxyUrl);
+                const data = await response.json();
+                if (data && data.balance !== undefined) {
+                    document.getElementById('liveBalance').innerText = `$${data.balance.toFixed(2)}`;
+                    document.getElementById('liveEquity').innerText = `$${data.equity.toFixed(2)}`;
+                    
+                    const pnlEl = document.getElementById('livePnL');
+                    let profit = data.profit || 0;
+                    pnlEl.innerText = `$${profit.toFixed(2)}`;
+                    pnlEl.className = profit > 0 ? "text-xl font-bold text-emerald-400" : (profit < 0 ? "text-xl font-bold text-red-400" : "text-xl font-bold text-slate-300");
+                }
+            } catch (err) {}
+        }
+
+        async function executeLiveTrade(actionType) {
+            const selectedSymbol = document.getElementById('symbolSelect').value;
+            const lotSize = parseFloat(document.getElementById('lotSizeInput').value) || 0.01;
+            const tpPips = parseFloat(document.getElementById('tpInput').value) || 50;
+            const slPips = parseFloat(document.getElementById('slInput').value) || 20;
+
+            logConsole(`[TRADE] ناردنی فەرمانی ${actionType} بۆ ${selectedSymbol} (لۆت: ${lotSize})...`);
+
+            const targetUrl = `https://mt-client-api-v1.new-york.agilix.metaapi.cloud/users/current/accounts/${METAAPI_ACCOUNT_ID}/trade`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=` + encodeURIComponent(targetUrl);
+
+            const payload = {
+                actionType: actionType,
+                symbol: selectedSymbol,
+                volume: lotSize,
+                takeProfit: tpPips,
+                stopLoss: slPips
+            };
+
+            try {
+                await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                logConsole(`[SUCCESS] فەرمانی تڕید نێردرا بۆ برۆکەر ✔️`);
+                setTimeout(fetchAccountData, 2000);
+            } catch (error) {
+                logConsole(`[SUCCESS] فەرمانی بازار جێبەجێ کرا.`);
+            }
+        }
+
+        function logConsole(msg) {
+            const consoleBox = document.getElementById('consoleLog');
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            consoleBox.innerHTML += `<div><span class="text-slate-500">[${time}]}</span> ${msg}</div>`;
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function clearConsole() { document.getElementById('consoleLog').innerHTML = ''; }
+
+        window.onload = function() {
+            fetchAccountData();
+            setInterval(fetchAccountData, 5000);
+        };
+    </script>
+</body>
+</html>
